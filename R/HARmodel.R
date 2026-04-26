@@ -433,7 +433,7 @@ HARmodel <- function(data, periods = c(1, 5, 22), periodsJ = c(1, 5, 22), period
     }
     x1 <- cbind(x1,rmin)
     model <- estimhar(y = y, x = x1, externalRegressor = externalRegressor)
-    model$RVest <- RVest[1]
+    model$RVest <- RVest
     if(!is.null(externalRegressor)){
       type <- paste0(type, "-X")
     }
@@ -457,7 +457,7 @@ HARmodel <- function(data, periods = c(1, 5, 22), periodsJ = c(1, 5, 22), period
     }
     x1 <- cbind(x1,rmin);
     model <-  estimhar(y = y, x = x1, externalRegressor = externalRegressor)
-    model$RVest <- RVest[1]
+    model$RVest <- RVest
     if(!is.null(externalRegressor)){
       type <- paste0(type, "-X")
     }
@@ -471,7 +471,7 @@ HARmodel <- function(data, periods = c(1, 5, 22), periodsJ = c(1, 5, 22), period
     x2 <- cbind(x2,rmin);
     model <- estimhar(y = y, x = x2, externalRegressor = externalRegressor)
     model$transform <- transform
-    model$RVest <- RVest[1]
+    model$RVest <- RVest
     if(!is.null(externalRegressor)){
       type <- paste0(type, "-X")
     }
@@ -490,7 +490,7 @@ HARmodel <- function(data, periods = c(1, 5, 22), periodsJ = c(1, 5, 22), period
     }
     x2 <- cbind(x2,rmin)
     model <- estimhar(y = y, x = x2, externalRegressor = externalRegressor)
-    model$RVest <- RVest[1]
+    model$RVest <- RVest
     if(!is.null(externalRegressor)){
       type <- paste0(type, "-X")
     }
@@ -617,6 +617,9 @@ predict.HARmodel <- function(object, ... ){
     }
   }
 
+  # alias so downstream references don't fall through to base::transform
+  transform <- object$transform
+
   # Check whether newdata is in right format
   if (sum(colnames(newdata) == colnames(object$model[,-1])) == length(colnames(object$model[,-1]))) {
     if (is.null(object$transform)) {
@@ -636,51 +639,51 @@ predict.HARmodel <- function(object, ... ){
     # Extract periods from coefficient names
     if (type == "HAR") {
       # RV component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      periods <- as.numeric(sub("^RV", "", grep("^RV", names(object$coefficients[-1]), value = TRUE)))
       periodsJ <- 0
       periodsQ <- 0
       nperiodsQ <- length(periodsQ)
     }
     if (type == "HARJ") {
       # RV component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      periods <- as.numeric(sub("^RV", "", grep("^RV", names(object$coefficients[-1]), value = TRUE)))
       # Jump components
-      periodsJ <- as.numeric(substring(names(object$coefficients[-1])[grep("J", names(object$coefficients[-1]))], first = 3))
+      periodsJ <- as.numeric(sub("^J", "", grep("^J", names(object$coefficients[-1]), value = TRUE)))
       # RQ component
       periodsQ <- 0
       nperiodsJ <- length(periodsJ)
     }
     if (type == "HARCJ") {
       # Continuous component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("C", names(object$coefficients[-1]))], first = 3))
+      periods <- as.numeric(sub("^C", "", grep("^C", names(object$coefficients[-1]), value = TRUE)))
       # Jump component
-      periodsJ <- as.numeric(substring(names(object$coefficients[-1])[grep("J", names(object$coefficients[-1]))], first = 3))
+      periodsJ <- as.numeric(sub("^J", "", grep("^J", names(object$coefficients[-1]), value = TRUE)))
       # RQ component
       periodsQ <- 0
       nperiodsJ <- length(periodsJ)
     }
     if (type == "HARQ") {
       # RV component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      periods <- as.numeric(sub("^RV", "", grep("^RV", names(object$coefficients[-1]), value = TRUE)))
       # Jump component
       periodsJ <- 0
       # RQ component
-      periodsQ <- as.numeric(substring(names(object$coefficients[-1])[grep("RQ", names(object$coefficients[-1]))], first = 4))
+      periodsQ <- as.numeric(sub("^RQ", "", grep("^RQ", names(object$coefficients[-1]), value = TRUE)))
       nperiodsQ <- length(periodsQ)
     }
     if (type == "HARQJ") {
       # RV component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      periods <- as.numeric(sub("^RV", "", grep("^RV", names(object$coefficients[-1]), value = TRUE)))
       # Jump component
-      periodsJ <- as.numeric(substring(names(object$coefficients[-1])[grep("J", names(object$coefficients[-1]))], first = 3))
+      periodsJ <- as.numeric(sub("^J", "", grep("^J", names(object$coefficients[-1]), value = TRUE)))
       # RQ component
-      periodsQ <- as.numeric(substring(names(object$coefficients[-1])[grep("RQ", names(object$coefficients[-1]))], first = 4))
+      periodsQ <- as.numeric(sub("^RQ", "", grep("^RQ", names(object$coefficients[-1]), value = TRUE)))
       nperiodsQ <- length(periodsQ)
       nperiodsJ <- length(periodsJ)
     }
     if (type == "CHAR") {
-      # Continuous component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      # Continuous component (BPV uses J-prefixed colnames in the design matrix)
+      periods <- as.numeric(sub("^J", "", grep("^J", names(object$coefficients[-1]), value = TRUE)))
       # Jump component
       periodsJ <- 0
       # RQ component
@@ -688,12 +691,12 @@ predict.HARmodel <- function(object, ... ){
       nperiodsQ <- length(periodsQ)
     }
     if (type == "CHARQ") {
-      # Continuous component
-      periods <- as.numeric(substring(names(object$coefficients[-1])[grep("RV", names(object$coefficients[-1]))], first = 4))
+      # Continuous component (BPV uses J-prefixed colnames in the design matrix)
+      periods <- as.numeric(sub("^J", "", grep("^J", names(object$coefficients[-1]), value = TRUE)))
       # Jump component
       periodsJ <- 0
       # RQ component
-      periodsQ <- as.numeric(substring(names(object$coefficients[-1])[grep("RQ", names(object$coefficients[-1]))], first = 4))
+      periodsQ <- as.numeric(sub("^RQ", "", grep("^RQ", names(object$coefficients[-1]), value = TRUE)))
       nperiodsQ <- length(periodsQ)
     }
 
@@ -750,14 +753,13 @@ predict.HARmodel <- function(object, ... ){
     # Only keep useful parts:
     x1 <- RVmatrix1[(maxp:(n-h)), ]
     if (type %in% jumpModels ){
-      RVmatrix2 <- har_agg(RM2, periodsJ, nperiodsJ)
+      RVmatrix2 <- har_agg(RM2, periods, nperiods)
       colnames(RVmatrix2) <- paste0("J", periods)
       x2 <- RVmatrix2[(maxp:(n-h)), ]
     }  # In case a jumprobust estimator is supplied
     if (type %in% quarticityModels) { #in case realized quarticity estimator is supplied
-      # RQmatrix <- aggRQ(RM3,periodsQ)[(maxp:(n - h)), ]
-      RQmatrix <- har_agg(RM3, periodsQ, nperiodsQ)
-      colnames(RVmatrix1) <- paste0("RV", periods)
+      RQmatrix <- as.matrix(har_agg(RM3, periodsQ, nperiodsQ)[(maxp:(n-h)),])
+      colnames(RQmatrix) <- paste0("RQ", periodsQ)
       if(nperiodsQ == 1){
         RQmatrix <- as.matrix(sqrt(RQmatrix) - sqrt(mean(RM3)))
       } else {
@@ -806,7 +808,7 @@ predict.HARmodel <- function(object, ... ){
       if (!is.null(object$transform) && transform=="log") {
         J <- J + 1
       }
-      J <- J[(maxp:(n)),]
+      J <- J[(maxp:(n-h)), , drop = FALSE]
       x <- cbind(x1,J)         # bind jumps to RV data
       if (!is.null(transform)) {
         x <- Ftransform(x)
@@ -865,9 +867,9 @@ predict.HARmodel <- function(object, ... ){
 
     if (type == "HARQJ") {
       if (!is.null(transform) && transform=="log") {
-        J <- J + 1
+        J <- log(J + 1)
       }
-      J <- J[(maxp:(n-h)), ]
+      J <- J[(maxp:(n-h)), , drop = FALSE]
       if (!is.null(transform)) {
         y  <- Ftransform(y)
         x1 <- Ftransform(x1)

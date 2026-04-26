@@ -76,7 +76,55 @@ test_that("HARModel",{
   dat <- as.xts(sampleOneMinuteData[, makeReturns(STOCK), by = list(DATE = as.Date(DT))])
   x <- HARmodel(dat, periods = c(1,3), RVest = c("rCov"), type="HAR", inputType = "returns", leverage = c(1,3))
   expect_equal(sum(coef(x)), 0.5175878)
-  
+
+})
+
+
+# predict.HARmodel newdata path -------------------------------------------
+test_that("predict.HARmodel honors object$transform on the newdata path", {
+  skip_on_cran()
+  #bare `transform` used to fall through to base::transform, silently dropping log/sqrt. Periods >= 10 isolate the transform fix from a separate substring-extraction bug.
+  set.seed(1)
+  nDays <- 60; nMin <- 390
+  ts <- as.POSIXct("2020-01-02", tz = "UTC") + rep((seq_len(nDays) - 1) * 86400, each = nMin) + rep(seq_len(nMin) * 60, nDays)
+  rets <- xts::xts(rnorm(nDays * nMin, sd = 1e-3), order.by = ts)
+  modelLog <- HARmodel(rets, periods = c(10,22), type = "HAR", transform = "log", inputType = "returns")
+  expect_equal(as.numeric(tail(predict(modelLog, newdata = rets), 1)), as.numeric(predict(modelLog)))
+  modelSqrt <- HARmodel(rets, periods = c(10,22), type = "HAR", transform = "sqrt", inputType = "returns")
+  expect_equal(as.numeric(tail(predict(modelSqrt, newdata = rets), 1)), as.numeric(predict(modelSqrt)))
+})
+
+
+test_that("predict.HARmodel newdata path matches no-newdata across types and transforms", {
+  skip_on_cran()
+  #inject jumps so HARCJ has non-degenerate J coefficients under ABDJumptest.
+  set.seed(1)
+  nDays <- 60; nMin <- 390
+  ts <- as.POSIXct("2020-01-02", tz = "UTC") + rep((seq_len(nDays) - 1) * 86400, each = nMin) + rep(seq_len(nMin) * 60, nDays)
+  e <- rnorm(nDays * nMin, sd = 1e-3)
+  jumpIdx <- sample(seq_len(nDays * nMin), 20)
+  e[jumpIdx] <- e[jumpIdx] + sign(rnorm(length(jumpIdx))) * 0.05
+  rets <- xts::xts(e, order.by = ts)
+  cases <- list(
+    list(type = "HAR",   RVest = c("rCov")),
+    list(type = "HARJ",  RVest = c("rCov", "rBPCov")),
+    list(type = "HARCJ", RVest = c("rCov", "rBPCov")),
+    list(type = "HARQ",  RVest = c("rCov", "rQuar")),
+    list(type = "HARQJ", RVest = c("rCov", "rBPCov", "rQuar")),
+    list(type = "CHAR",  RVest = c("rCov", "rBPCov")),
+    list(type = "CHARQ", RVest = c("rCov", "rBPCov", "rQuar"))
+  )
+  for (cs in cases) {
+    for (tr in list(NULL, "log", "sqrt")) {
+      model <- suppressWarnings(HARmodel(rets, periods = c(10, 22), periodsJ = c(10, 22), periodsQ = c(10, 22),
+                                         type = cs$type, RVest = cs$RVest, transform = tr, inputType = "returns"))
+      expect_equal(
+        as.numeric(tail(suppressWarnings(predict(model, newdata = rets)), 1)),
+        as.numeric(predict(model)),
+        info = paste0("type=", cs$type, " transform=", deparse(tr))
+      )
+    }
+  }
 })
 
 
