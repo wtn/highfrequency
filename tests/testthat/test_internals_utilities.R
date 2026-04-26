@@ -36,5 +36,26 @@ test_that("KK cpp function works correctly", {
   expect_equal(highfrequency:::KK(x, 10), (1 + sin(pi/2 - pi * x))/2)
   expect_equal(highfrequency:::KK(x, 11), (1 - sin(pi/2 - pi * (1 - x) * (1 - x)))/2)
   expect_equal(highfrequency:::KK(x, 12), -999)
-  
+
+})
+
+
+# har_agg -----------------------------------------------------------------
+test_that("har_agg matches the trailing-mean reference", {
+  skip_on_cran()
+  RM <- rnorm(100)^2
+  reference <- function(RM, p) { out <- rep(NA_real_, length(RM)); for (i in p:length(RM)) out[i] <- mean(RM[(i - p + 1):i]); out }
+  for (p in c(1, 5, 22, 50)) {
+    expect_equal(as.numeric(highfrequency:::har_agg(RM, p, 1L)), reference(RM, p), info = paste("period =", p))
+  }
+})
+
+
+test_that("har_agg cost should not scale with window size", {
+  skip_on_cran()
+  #the inner loop recomputes sum(RM[span(j-p, j-1)])/p every step, making cost O(N*p) per column instead of O(N). a running-sum impl gives O(N) per column.
+  RM <- rnorm(50000)^2
+  t1 <- system.time(replicate(20, highfrequency:::har_agg(RM, 5, 1L)))[3]
+  t2 <- system.time(replicate(20, highfrequency:::har_agg(RM, 500, 1L)))[3]
+  expect_lt(t2 / t1, 5)
 })
