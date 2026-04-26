@@ -376,7 +376,7 @@ HARmodel <- function(data, periods = c(1, 5, 22), periodsJ = c(1, 5, 22), period
       }
       
       J <- J[,1]
-      teststats <- ABDJumptest(RV=RM1,BPV=RM2,TQ=TQ )
+      teststats <- ABDJumptest(RV = RM1, BPV = RM2, TQ = TQ, n = length(RM1))
     } else if(jumpTest == "testStats") {
       teststats <- RM3
     } else {
@@ -819,7 +819,7 @@ predict.HARmodel <- function(object, ... ){
       if (object$jumpTest=="ABDJumptest") {
         TQ <- apply.daily(newdata, rTPQuar)
         J <- J[, 1]
-        teststats <- ABDJumptest(RV = RM1, BPV = RM2,TQ = TQ)
+        teststats <- ABDJumptest(RV = RM1, BPV = RM2, TQ = TQ, n = length(RM1))
       } else {
         jtest <- match.fun(object$jumpTest)
         teststats <- jtest(newdata, ...)
